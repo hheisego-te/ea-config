@@ -6,7 +6,8 @@ from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException, WebDriverException
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,11 +21,20 @@ def timestamp():
     date_time_now = datetime.now()
     #dt_string = date_time_now.strftime("%m/%d/%H:%M:%S")
     return date_time_now.strftime("%m/%d/%H:%M:%S")
+
+def dump_logs(d_logs):
+    d_logs = str(d_logs)
+    file_name = 'dump' + timestamp().replace('/', '_')[:8] + '.log'
+    f = open(file_name, 'a+')  # open file in append mode
+    f.write(d_logs)
+    f.close()
+
 # Selenium
 options = Options()
-#options.add_argument('--headless')
+options.add_argument('--headless')
 driver = webdriver.Firefox(options=options) #executable_path="C:\\Users\\Helmut\\Desktop\\geckodriver.exe",
-wait = WebDriverWait(driver, 7)
+#wait = WebDriverWait(driver, 7)
+action = ActionChains(driver)
 
 # Openpyxl
 config_file = openpyxl.load_workbook('config.xlsx')
@@ -32,12 +42,14 @@ data_sheet = config_file["Config"]
 #logs_tab = "Logs("+ dt_string +")"
 #logs_sheet = config_file.create_sheet(logs_tab)
 #logs_sheet = config_file[logs_tab]
+
 # Progress Bar
-bar = Bar('Configuring...', max=(data_sheet.max_row - 1))
+bar = Bar('Configuring ', max=(data_sheet.max_row - 1))
 
 def login(host_ip, password):
 
     portal = 'https://' + host_ip
+    dump_logs(d_logs=portal)
 
     try:
         driver.set_page_load_timeout(11)
@@ -54,19 +66,21 @@ def login(host_ip, password):
 
     except TimeoutException as ex:
 
-        print("Host no reachable: " + portal)
-        print(ex)
+        print(" \nHost no reachable: " + portal)
+        dump_logs(d_logs=ex)
+
         return False
 
-    except(NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
+    except(NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException, WebDriverException) as ex:
         pass
-        print("Login to: " + portal)
-        print(ex)
+
+        step = "\nNetwork Conf " + portal
+        dump_logs(d_logs=step)
+        dump_logs(d_logs=ex)
         return True
 
 
 def initial_setup(host_ip, new_password, accgroup_token):
-
 
     status = ''
     logged = login(host_ip=host_ip, password='welcome')
@@ -76,51 +90,50 @@ def initial_setup(host_ip, new_password, accgroup_token):
         status += "\n" + timestamp() + "-> Enterprise Agent Reachable "
 
         try:
-            time.sleep(0.77)
+            time.sleep(1.77)
             driver.find_element(By.NAME, "originalPassword").send_keys(C_PWD)
-            time.sleep(1.77)
+            time.sleep(0.77)
             driver.find_element(By.NAME, "newPassword").send_keys(new_password)
-            time.sleep(1.77)
+            time.sleep(0.77)
             driver.find_element(By.NAME, "confirmPassword").send_keys(new_password)
-            time.sleep(1.77)  # button.btn:nth-child(5)
+            time.sleep(3.33)
+            #change_password = WebDriverWait(driver, 17).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn:nth-child(5)")))
+            #change_password.click()
             driver.find_element(By.CSS_SELECTOR, "button.btn:nth-child(5)").submit()
-            time.sleep(2.77)
+            time.sleep(1.77)
 
             status += "\n" + timestamp() + "-> Original Password Has Changed Successfully "
 
         except(NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
             pass
-            print("Could not Change Original Password")
             print(ex)
+            dump_logs(d_logs=ex)
+
             status += "\n" + timestamp() + "-> Could not Change Original Password"
 
         try:
-            time.sleep(0.77)
+            time.sleep(1.77)
             driver.find_element(By.NAME, "accountToken").send_keys(accgroup_token)
-            time.sleep(2.77)
-            #wait.until(EC.element_to_be_clickable((By.ID, "setupButtonNext")).click())
-            driver.find_element(By.ID, "setupButtonNext").click()
-            time.sleep(0.77)
-            driver.find_element(By.CSS_SELECTOR, ".controls > div:nth-child(1) > button:nth-child(1)").click()
+            time.sleep(1.77)
+            next_button = WebDriverWait(driver, 7).until(EC.element_to_be_clickable((By.ID, "setupButtonNext")))
+            next_button.click()
+            time.sleep(2.77)##setupButtonNext
+
 
             status += "\n" + timestamp() + "-> Account Group Token Changed Successfully "
 
         except(NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
             pass
-            print("Could not Change Account Group Token")
             print(ex)
-            status += "\n" + timestamp() + "-> Could not Change Account Group Token "
+            dump_logs(d_logs=ex)
 
         return status
 
     else:
+
         status += "\n" + timestamp() + "-> Enterprise Agent Does not Reachable "
 
         return status
-
-
-
-
 
 
 def network_setup(host_ip, hostname, new_password):
@@ -152,7 +165,7 @@ def network_setup(host_ip, hostname, new_password):
             driver.find_element(By.ID, "hostname").send_keys(hostname)
             time.sleep(1.77)
             driver.find_element(By.ID, "submit-form").submit()
-            time.sleep(7.77)
+            time.sleep(5.55)
 
             status += "\n" + timestamp() + "-> Network Setup Complete "
 
@@ -165,7 +178,8 @@ def network_setup(host_ip, hostname, new_password):
     except(TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
 
         status += "\n" + timestamp() + "-> Network Setup Fail"
-        print(ex)
+        dump_logs(d_logs=ex)
+
         return False
 
 
@@ -175,33 +189,35 @@ for ea in data_sheet.iter_rows(min_col=1, max_col=6, min_row=2):
 
     log_output = ''
     bar.next()
+
     first_part = initial_setup(host_ip=ea[0].value, new_password=ea[1].value, accgroup_token=ea[2].value)
     time.sleep(1.7)
 
     if "Enterprise Agent Reachable" in first_part:
 
-        log_output += first_part
+        log_output += str(first_part)
 
         second_part = network_setup(host_ip=ea[0].value, hostname=ea[3].value, new_password=ea[1].value)
 
         if second_part:
 
-            log_output += second_part
+            log_output += str(second_part)
 
         else:
 
-            log_output += second_part
+            log_output += str(second_part)
 
     else:
 
         log_output += first_part
+        data_sheet.cell(row=ea[0].row, column=1).font = Font(color="00FF0000")
 
     data_sheet.cell(row=ea[0].row, column=7, value=None)
     data_sheet.cell(row=ea[0].row, column=7, value=log_output).alignment = Alignment(shrink_to_fit=False, wrapText=True, horizontal='general')
     data_sheet.cell(row=ea[0].row, column=7).font = Font(color="00008B")
      # Green color="00339966"  + Red color="00FF0000" position -> ea[6].row
     config_file.save('config.xlsx')
-    print(time.perf_counter() - start_time, "seconds")
+    print(" Elapsed Time ", time.perf_counter() - start_time)
 
     if ea[0].value is None:
         break
@@ -209,19 +225,7 @@ for ea in data_sheet.iter_rows(min_col=1, max_col=6, min_row=2):
 driver.quit()
 config_file.save('config.xlsx')
 bar.finish()
-print(time.perf_counter() - start_time, "seconds")
+print(" Total Elapsed Time ", time.perf_counter() - start_time)
 
-
-
-
-
-#pip3.9 install progress
+#pip install progress
 #pip install openpyxl
-"""        driver.get(ip_addr)
-        time.sleep(0.77)
-        driver.find_element(By.NAME, 'username').send_keys('admin')
-        time.sleep(0.77)
-        driver.find_element(By.NAME, "password").send_keys(C_PWD)
-        time.sleep(0.77)
-        driver.find_element(By.CSS_SELECTOR, '.btn-outline-default').submit()
-        time.sleep(2.77)"""
