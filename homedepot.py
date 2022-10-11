@@ -31,7 +31,7 @@ def dump_logs(d_logs):
 
 # Selenium
 options = Options()
-options.add_argument('--headless')
+#options.add_argument('--headless')
 driver = webdriver.Firefox(options=options) #executable_path="C:\\Users\\Helmut\\Desktop\\geckodriver.exe",
 #wait = WebDriverWait(driver, 7)
 action = ActionChains(driver)
@@ -66,7 +66,7 @@ def login(host_ip, password):
 
     except TimeoutException as ex:
 
-        print(" \nHost no reachable: " + portal)
+        print(" Host no reachable: " + portal)
         dump_logs(d_logs=ex)
 
         return False
@@ -106,7 +106,7 @@ def initial_setup(host_ip, new_password, accgroup_token):
 
         except(NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
             pass
-            print(ex)
+            #print(ex)
             dump_logs(d_logs=ex)
 
             status += "\n" + timestamp() + "-> Could not Change Original Password"
@@ -124,7 +124,7 @@ def initial_setup(host_ip, new_password, accgroup_token):
 
         except(NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
             pass
-            print(ex)
+            #print(ex)
             dump_logs(d_logs=ex)
 
         return status
@@ -136,7 +136,7 @@ def initial_setup(host_ip, new_password, accgroup_token):
         return status
 
 
-def network_setup(host_ip, hostname, new_password):
+def network_setup(host_ip, hostname, new_password, proxy, proxy_port, proxy_list):
 
     status = ''
 
@@ -163,7 +163,20 @@ def network_setup(host_ip, hostname, new_password):
             driver.find_element(By.ID, "hostname").clear()
             time.sleep(0.77)
             driver.find_element(By.ID, "hostname").send_keys(hostname)
-            time.sleep(1.77)
+            time.sleep(0.77)
+
+            # Proxy
+            driver.find_element(By.ID, "proxy-type-label-static").click()
+            time.sleep(0.77)
+            driver.find_element(By.NAME, "proxy-host").send_keys(proxy)
+            time.sleep(0.77)
+            driver.find_element(By.NAME, "proxy-port").send_keys(proxy_port)
+            time.sleep(0.77)
+            driver.find_element(By.ID, "bypass-list-input").send_keys(proxy_list)
+            time.sleep(0.77)
+            driver.find_element(By.CLASS_NAME, "input-group-append").click()
+            time.sleep(0.77)
+            # Done Network
             driver.find_element(By.ID, "submit-form").submit()
             time.sleep(5.55)
 
@@ -185,7 +198,7 @@ def network_setup(host_ip, hostname, new_password):
 
 start_time = time.perf_counter()
 
-for ea in data_sheet.iter_rows(min_col=1, max_col=6, min_row=2):
+for ea in data_sheet.iter_rows(min_col=1, max_col=7, min_row=2):
 
     log_output = ''
     bar.next()
@@ -197,7 +210,7 @@ for ea in data_sheet.iter_rows(min_col=1, max_col=6, min_row=2):
 
         log_output += str(first_part)
 
-        second_part = network_setup(host_ip=ea[0].value, hostname=ea[3].value, new_password=ea[1].value)
+        second_part = network_setup(host_ip=ea[0].value, new_password=ea[1].value, hostname=ea[3].value, proxy=ea[5].value, proxy_port=ea[6].value, proxy_list="google.com;cisco.com;thousandeyes.com")
 
         if second_part:
 
@@ -212,9 +225,9 @@ for ea in data_sheet.iter_rows(min_col=1, max_col=6, min_row=2):
         log_output += first_part
         data_sheet.cell(row=ea[0].row, column=1).font = Font(color="00FF0000")
 
-    data_sheet.cell(row=ea[0].row, column=7, value=None)
-    data_sheet.cell(row=ea[0].row, column=7, value=log_output).alignment = Alignment(shrink_to_fit=False, wrapText=True, horizontal='general')
-    data_sheet.cell(row=ea[0].row, column=7).font = Font(color="00008B")
+    data_sheet.cell(row=ea[0].row, column=11, value=None)
+    data_sheet.cell(row=ea[0].row, column=11, value=log_output).alignment = Alignment(shrink_to_fit=False, wrapText=True, horizontal='general')
+    data_sheet.cell(row=ea[0].row, column=11).font = Font(color="00008B")
      # Green color="00339966"  + Red color="00FF0000" position -> ea[6].row
     config_file.save('config.xlsx')
     print(" Elapsed Time ", time.perf_counter() - start_time)
