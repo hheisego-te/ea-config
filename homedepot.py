@@ -8,13 +8,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException, WebDriverException
-from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
 # Constants & Variables
 C_PWD = 'welcome'
+
+CERT = "-----BEGIN CERTIFICATE-----\n"
+CERT += "MIIByDCCAXKgAwIBAgIUFCd5ZkgUv33hkH3AnQO2T7DilB4wDQYJKoZIhvcNAQEL\n"
+CERT += "BQAwMDELMAkGA1UEBhMCTVgxEDAOBgNVBAgMB03DqXhpY28xDzANBgNVBAcMBlRv\n"
+CERT += "bHVjYTAeFw0yMjEwMTcyMjI2NTlaFw0yOTEwMTUyMjI2NTlaMDAxCzAJBgNVBAYT\n"
+CERT += "Ak1YMRAwDgYDVQQIDAdNw6l4aWNvMQ8wDQYDVQQHDAZUb2x1Y2EwXDANBgkqhkiG\n"
+CERT += "9w0BAQEFAANLADBIAkEAsNzCb60JcoW8gV2FiTkRwpwfL600TQvYl/Ilz2gg52x9\n"
+CERT += "Oy1MZEE2BZPdeYftkKkwGKXB6Dw9dvO4kCy9ePZl8wIDAQABo2QwYjAdBgNVHQ4E\n"
+CERT += "FgQUrCQGY41Jtvaq0xzpbfz6RRxas0cwHwYDVR0jBBgwFoAUrCQGY41Jtvaq0xzp\n"
+CERT += "bfz6RRxas0cwCwYDVR0PBAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMCMA0GCSqG\n"
+CERT += "SIb3DQEBCwUAA0EAo82qS/yJYTxNhKBMRavBKuDF3CsGqOSTIT5Bat3jbJuqaK0U\n"
+CERT += "xt8pD9zsf2kExB/Blfm4fuMAiNZgDHsfSgnXiw==\n"
+CERT += "-----END CERTIFICATE-----"
+
 
 # Date & Time
 def timestamp():
@@ -66,7 +79,7 @@ def login(host_ip, password):
 
     except TimeoutException as ex:
 
-        print(" Host no reachable: " + portal)
+        print(" Host not reachable: " + portal)
         dump_logs(d_logs=ex)
 
         return False
@@ -112,12 +125,13 @@ def initial_setup(host_ip, new_password, accgroup_token):
             status += "\n" + timestamp() + "-> Could not Change Original Password"
 
         try:
-            time.sleep(1.77)
+            time.sleep(2.22)
             driver.find_element(By.NAME, "accountToken").send_keys(accgroup_token)
-            time.sleep(1.77)
+            time.sleep(2.22)
             next_button = WebDriverWait(driver, 7).until(EC.element_to_be_clickable((By.ID, "setupButtonNext")))
+            time.sleep(2.22)
             next_button.click()
-            time.sleep(2.77)##setupButtonNext
+            time.sleep(1.77)##setupButtonNext
 
 
             status += "\n" + timestamp() + "-> Account Group Token Changed Successfully "
@@ -131,12 +145,12 @@ def initial_setup(host_ip, new_password, accgroup_token):
 
     else:
 
-        status += "\n" + timestamp() + "-> Enterprise Agent Does not Reachable "
+        status += "\n" + timestamp() + "-> Enterprise Agent not Reachable "
 
         return status
 
 
-def network_setup(host_ip, hostname, new_password, proxy, proxy_port, proxy_list):
+def network_setup(host_ip, hostname, new_password, ntp, proxy, proxy_port, proxy_list):
 
     status = ''
 
@@ -158,13 +172,27 @@ def network_setup(host_ip, hostname, new_password, proxy, proxy_port, proxy_list
         if logged is True:
 
             time.sleep(0.77)
+            driver.find_element(By.LINK_TEXT, "Time").click()
+            time.sleep(0.77)
+            driver.find_element(By.CSS_SELECTOR, 'div.form-group:nth-child(1) > div:nth-child(2) > input:nth-child(1)').clear()
+            time.sleep(0.77)
+            try:
+                driver.find_element(By.CSS_SELECTOR, 'div.form-group:nth-child(1) > div:nth-child(2) > input:nth-child(1)').send_keys(ntp)
+            except (NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException) as ex:
+                pass
+
+            time.sleep(0.77)
+            driver.find_element(By.ID, "submit-form").submit()
+            time.sleep(0.77)
+            #Hostname
+            time.sleep(1.77)
             driver.find_element(By.LINK_TEXT, "Network").click()
             time.sleep(1.77)
             driver.find_element(By.ID, "hostname").clear()
             time.sleep(0.77)
             driver.find_element(By.ID, "hostname").send_keys(hostname)
             time.sleep(0.77)
-
+            status += "\n" + timestamp() + "-> Hostname Change "
             # Proxy
             driver.find_element(By.ID, "proxy-type-label-static").click()
             time.sleep(0.77)
@@ -176,9 +204,13 @@ def network_setup(host_ip, hostname, new_password, proxy, proxy_port, proxy_list
             time.sleep(0.77)
             driver.find_element(By.CLASS_NAME, "input-group-append").click()
             time.sleep(0.77)
+            #SSL
+            driver.find_element(By.NAME, "proxy-ca").send_keys(CERT)
+            status += "\n" + timestamp() + "-> SSL cert ok "
+            time.sleep(0.77)
             # Done Network
             driver.find_element(By.ID, "submit-form").submit()
-            time.sleep(5.55)
+            time.sleep(7.77)
 
             status += "\n" + timestamp() + "-> Network Setup Complete "
 
@@ -198,7 +230,7 @@ def network_setup(host_ip, hostname, new_password, proxy, proxy_port, proxy_list
 
 start_time = time.perf_counter()
 
-for ea in data_sheet.iter_rows(min_col=1, max_col=7, min_row=2):
+for ea in data_sheet.iter_rows(min_col=1, max_col=8, min_row=2):
 
     log_output = ''
     bar.next()
@@ -210,7 +242,7 @@ for ea in data_sheet.iter_rows(min_col=1, max_col=7, min_row=2):
 
         log_output += str(first_part)
 
-        second_part = network_setup(host_ip=ea[0].value, new_password=ea[1].value, hostname=ea[3].value, proxy=ea[5].value, proxy_port=ea[6].value, proxy_list="google.com;cisco.com;thousandeyes.com")
+        second_part = network_setup(host_ip=ea[0].value, new_password=ea[1].value, hostname=ea[3].value, ntp=ea[4].value, proxy=ea[5].value, proxy_port=ea[6].value, proxy_list="google.com;cisco.com;thousandeyes.com")
 
         if second_part:
 
@@ -225,9 +257,9 @@ for ea in data_sheet.iter_rows(min_col=1, max_col=7, min_row=2):
         log_output += first_part
         data_sheet.cell(row=ea[0].row, column=1).font = Font(color="00FF0000")
 
-    data_sheet.cell(row=ea[0].row, column=11, value=None)
-    data_sheet.cell(row=ea[0].row, column=11, value=log_output).alignment = Alignment(shrink_to_fit=False, wrapText=True, horizontal='general')
-    data_sheet.cell(row=ea[0].row, column=11).font = Font(color="00008B")
+    data_sheet.cell(row=ea[0].row, column=9, value=None)
+    data_sheet.cell(row=ea[0].row, column=9, value=log_output).alignment = Alignment(shrink_to_fit=False, wrapText=True, horizontal='general')
+    data_sheet.cell(row=ea[0].row, column=9).font = Font(color="00008B")
      # Green color="00339966"  + Red color="00FF0000" position -> ea[6].row
     config_file.save('config.xlsx')
     print(" Elapsed Time ", time.perf_counter() - start_time)
